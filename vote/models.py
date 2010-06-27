@@ -2,6 +2,7 @@ from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from django.db.models import Sum, Count
+from django.db import models
 
 class VoteManager(models.Manager):
     def get_score(self, obj):
@@ -13,7 +14,6 @@ class VoteManager(models.Manager):
         result = self.filter(object_id=obj.pk,
                              content_type=ctype).aggregate(score=Sum('vote'), 
                                                            num_votes=Count('vote'))
-
         return result
     
     def record_vote(self, obj, user, vote):
@@ -39,13 +39,16 @@ class VoteManager(models.Manager):
                 self.create(user=user, content_type=ctype,
                             object_id=obj.pk, vote=vote)
 
-    def get_top(self, Model, limit=10):
+    def get_top(self, Model, reverse=False):
         """
         Get the top scored objects for a given model.
         """
         ctype = ContentType.objects.get_for_model(Model)
-        result = self.filter(content_type=ctype).aggregate(score=Sum('vote').order_by('score')[:limit]
+        result = self.filter(content_type=ctype).values('object_id').annotate(score=Sum('vote')).order_by('%sscore' % ('' if reverse else '-'))
         return result
+        
+    def get_bottom(self, Model, reverse=True):
+        return self.get_top(Model, reverse)
 
 SCORES = (
     (u'+1', +1),
@@ -53,11 +56,11 @@ SCORES = (
 )
 
 class Vote(models.Model):
-    user         = models.ForeignKey(User)
-    content_type = models.ForeignKey(ContentType)
-    object_id    = models.PositiveIntegerField()
-    object       = generic.GenericForeignKey('content_type', 'object_id')
-    vote         = models.SmallIntegerField(choices=SCORES)
+    user            = models.ForeignKey(User)
+    content_type    = models.ForeignKey(ContentType)
+    object_id       = models.PositiveIntegerField()
+    content_object  = generic.GenericForeignKey('content_type', 'object_id')
+    vote            = models.SmallIntegerField(choices=SCORES)
 
     objects = VoteManager()
 
