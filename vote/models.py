@@ -14,7 +14,16 @@ class VoteManager(models.Manager):
         result = self.filter(object_id=obj.pk,
                              content_type=ctype).aggregate(score=Sum('vote'), 
                                                            num_votes=Count('vote'))
+        result['score'] = 0 if not result['score'] else result['score']
         return result
+    
+    def get_for_user(self, user, obj):
+        ctype = ContentType.objects.get_for_model(obj)
+        try:
+            vote = self.get(content_type=ctype, object_id=obj.pk, user=user)
+        except models.ObjectDoesNotExist:
+            vote = None
+        return vote
     
     def record_vote(self, obj, user, vote):
         """

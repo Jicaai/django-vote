@@ -18,8 +18,10 @@ def vote_on_object(request, app, object_id, vote):
     if not next:
         next = '/'
     
+    print app
+    
     try:
-        app_label, model = app.split('.')
+        app_label, model = app.split('_')
         ctype = ContentType.objects.get(app_label=app_label, model=model)
     except ContentType.DoesNotExist:
         return HttpResponseRedirect(next + '?error=app-not-exists')
